@@ -1,0 +1,271 @@
+@import "tailwindcss";
+
+@theme {
+  --font-serif: "Cormorant Garamond", "Georgia", "Times New Roman", serif;
+  --font-sans: "Inter", ui-sans-serif, system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
+
+  --color-pergamino-50: #fbf8f1;
+  --color-pergamino-100: #f5efe1;
+  --color-pergamino-200: #ebe0c8;
+  --color-pergamino-300: #dccba5;
+
+  --color-tinta-950: #17130f;
+  --color-tinta-900: #241d17;
+  --color-tinta-800: #3a2f26;
+  --color-tinta-700: #55473b;
+  --color-tinta-500: #8a7a6b;
+  --color-tinta-400: #a99a8a;
+
+  --color-vino-900: #4a1420;
+  --color-vino-800: #661b2b;
+  --color-vino-700: #812236;
+  --color-vino-600: #9a2f45;
+  --color-vino-100: #f6e3e6;
+
+  --color-oro-700: #9a6b1f;
+  --color-oro-600: #b8862b;
+  --color-oro-500: #cfa04a;
+  --color-oro-200: #efdfb4;
+  --color-oro-100: #f8f0d8;
+
+  --color-oliva-700: #4f5d3a;
+  --color-oliva-100: #eaf0dc;
+
+  --shadow-suave: 0 1px 2px rgba(36, 29, 23, 0.06), 0 8px 24px -12px rgba(36, 29, 23, 0.25);
+  --shadow-elevada: 0 2px 4px rgba(36, 29, 23, 0.08), 0 24px 48px -16px rgba(36, 29, 23, 0.35);
+
+  --animate-aparecer: aparecer 0.35s ease-out both;
+  --animate-subir: subir 0.4s cubic-bezier(0.2, 0.8, 0.2, 1) both;
+
+  @keyframes aparecer {
+    from {
+      opacity: 0;
+    }
+    to {
+      opacity: 1;
+    }
+  }
+  @keyframes subir {
+    from {
+      opacity: 0;
+      transform: translateY(16px);
+    }
+    to {
+      opacity: 1;
+      transform: translateY(0);
+    }
+  }
+}
+
+html {
+  scroll-behavior: smooth;
+}
+
+body {
+  @apply bg-pergamino-50 text-tinta-900 font-sans antialiased;
+  background-image:
+    radial-gradient(ellipse at top left, rgba(207, 160, 74, 0.10), transparent 55%),
+    radial-gradient(ellipse at bottom right, rgba(129, 34, 54, 0.07), transparent 50%);
+  background-attachment: fixed;
+}
+
+.textura-papel {
+  background-image:
+    repeating-linear-gradient(0deg, rgba(36, 29, 23, 0.018) 0px, rgba(36, 29, 23, 0.018) 1px, transparent 1px, transparent 3px);
+}
+
+.linea-decorativa {
+  background: linear-gradient(90deg, transparent, var(--color-oro-500), transparent);
+  height: 1px;
+}
+
+.scroll-suave::-webkit-scrollbar {
+  width: 8px;
+}
+.scroll-suave::-webkit-scrollbar-thumb {
+  background: var(--color-pergamino-300);
+  border-radius: 999px;
+}
+
+@media print {
+  body {
+    background: white !important;
+    overflow: visible !important;
+  }
+  .no-imprimir {
+    display: none !important;
+  }
+  .solo-imprimir {
+    display: block !important;
+  }
+  .hoja-fondo {
+    display: none !important;
+  }
+}
+.solo-imprimir {
+  display: none;
+}
+
+/* ─────────────── Escritorio: hoja tipo procesador de texto ─────────────── */
+
+.hoja-fondo {
+  background-color: #d9d4c9;
+  background-image:
+    radial-gradient(ellipse at top, rgba(255, 255, 255, 0.35), transparent 60%),
+    repeating-linear-gradient(0deg, rgba(0, 0, 0, 0.012) 0 1px, transparent 1px 4px);
+}
+
+.hoja {
+  width: 816px; /* Carta a 96 ppp */
+  max-width: 100%;
+  min-height: 1056px;
+  background: #fff;
+  padding: 72px 84px 96px;
+  box-shadow:
+    0 1px 2px rgba(23, 19, 15, 0.12),
+    0 24px 48px -20px rgba(23, 19, 15, 0.45);
+  border-radius: 2px;
+}
+
+@media (max-width: 640px) {
+  .hoja {
+    padding: 28px 22px 48px;
+    min-height: 60vh;
+  }
+}
+
+/* Tipografía del documento editable (también se usa al imprimir). */
+.documento {
+  font-family: Georgia, "Times New Roman", serif;
+  font-size: 12pt;
+  line-height: 1.6;
+  color: #17130f;
+  min-height: 800px;
+  caret-color: #812236;
+}
+.documento:focus {
+  outline: none;
+}
+.documento h1 {
+  font-family: "Cormorant Garamond", Georgia, serif;
+  font-size: 2.15rem;
+  line-height: 1.1;
+  font-weight: 700;
+  margin: 0 0 0.35rem;
+  color: #17130f;
+}
+.documento h2 {
+  font-family: "Cormorant Garamond", Georgia, serif;
+  font-size: 1.45rem;
+  line-height: 1.2;
+  font-weight: 700;
+  margin: 1.6rem 0 0.45rem;
+  color: #4a1420;
+  padding-bottom: 0.2rem;
+  border-bottom: 1px solid #ebe0c8;
+}
+.documento h3 {
+  font-family: "Cormorant Garamond", Georgia, serif;
+  font-size: 1.2rem;
+  font-weight: 700;
+  margin: 1.1rem 0 0.3rem;
+}
+.documento p {
+  margin: 0 0 0.7rem;
+}
+.documento p:empty::after,
+.documento li:empty::after {
+  content: "\00a0";
+}
+.documento .serie {
+  font-family: Inter, system-ui, sans-serif;
+  font-size: 0.68rem;
+  font-weight: 600;
+  letter-spacing: 0.22em;
+  text-transform: uppercase;
+  color: #9a6b1f;
+}
+.documento .subtitulo {
+  font-family: "Cormorant Garamond", Georgia, serif;
+  font-size: 1.3rem;
+  font-style: italic;
+  color: #55473b;
+  margin-bottom: 0.9rem;
+}
+.documento .referencia {
+  font-family: Inter, system-ui, sans-serif;
+  font-size: 0.7rem;
+  font-weight: 600;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  color: #812236;
+  margin-bottom: 0.35rem;
+}
+.documento .nota {
+  font-size: 0.86rem;
+  color: #55473b;
+}
+.documento .marcador {
+  color: #8a7a6b;
+  font-style: italic;
+  background: #f5efe1;
+  padding: 0 0.2rem;
+  border-radius: 3px;
+}
+.documento blockquote {
+  margin: 0.6rem 0 1rem;
+  padding: 0.6rem 1rem;
+  border-left: 3px solid #cfa04a;
+  background: #faf3df;
+  border-radius: 0 6px 6px 0;
+}
+.documento blockquote p {
+  margin: 0 0 0.3rem;
+}
+.documento blockquote p:last-child {
+  margin-bottom: 0;
+}
+.documento blockquote.versiculo {
+  font-size: 1.02em;
+}
+.documento ul,
+.documento ol {
+  margin: 0 0 0.8rem 1.4rem;
+  padding: 0;
+}
+.documento ul {
+  list-style: disc;
+}
+.documento ol {
+  list-style: decimal;
+}
+.documento li {
+  margin-bottom: 0.35rem;
+}
+.documento hr {
+  border: 0;
+  border-top: 1px solid #dccba5;
+  margin: 1.4rem 0;
+}
+.documento a {
+  color: #812236;
+  text-decoration: underline;
+}
+.documento mark.hallazgo {
+  background: #ffe59a;
+  color: inherit;
+  border-radius: 2px;
+}
+.documento mark.hallazgo.actual {
+  background: #f0a35a;
+}
+.documento .leyendo {
+  background: rgba(207, 160, 74, 0.16);
+  box-shadow: 0 0 0 6px rgba(207, 160, 74, 0.16);
+  border-radius: 4px;
+  transition: background 0.2s;
+}
+
+input[type="range"] {
+  cursor: pointer;
+}
