@@ -1,6 +1,5 @@
-import { useCallback, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { SELECCION } from "../data/seleccion";
-import { useLocalStorage } from "../hooks/useLocalStorage";
 import { documentoInicial, listarDocumentos, type DocumentoEscritorio } from "./generarDocumento";
 
 export interface DocGuardado {
@@ -11,12 +10,96 @@ export interface DocGuardado {
 
 type Almacen = Record<string, DocGuardado>;
 
+interface EstadoSincronizado {
+  almacen: Almacen;
+  extras: string[];
+  activoId: string;
+}
+
+const CLAVE_LOCAL = "escritorio-estado-v2";
+const activoIdInicial = SELECCION.items[0].temaId;
+
+function leerLocal(): EstadoSincronizado {
+  try {
+    const guardado = window.localStorage.getItem(CLAVE_LOCAL);
+    if (guardado) return JSON.parse(guardado) as EstadoSincronizado;
+  } catch {
+    /* almacenamiento no disponible */
+  }
+  return { almacen: {}, extras: [], activoId: activoIdInicial };
+}
+
+function guardarLocal(estado: EstadoSincronizado) {
+  try {
+    window.localStorage.setItem(CLAVE_LOCAL, JSON.stringify(estado));
+  } catch {
+    /* almacenamiento no disponible */
+  }
+}
+
+export type EstadoSincronizacion = "cargando" | "sincronizado" | "local" | "error";
+
 export function useDocumentos() {
-  const [almacen, setAlmacen] = useLocalStorage<Almacen>("escritorio-docs-v1", {});
-  const [extras, setExtras] = useLocalStorage<string[]>("escritorio-extras-v1", []);
-  const [activoId, setActivoId] = useLocalStorage<string>("escritorio-activo-v1", SELECCION.items[0].temaId);
-  // Se incrementa para forzar la recarga del editor tras restaurar un documento.
+  const inicial = useMemo(leerLocal, []);
+  const [almacen, setAlmacen] = useState<Almacen>(inicial.almacen);
+  const [extras, setExtras] = useState<string[]>(inicial.extras);
+  const [activoId, setActivoId] = useState<string>(inicial.activoId);
   const [versiones, setVersiones] = useState<Record<string, number>>({});
+  const [sincronizacion, setSincronizacion] = useState<EstadoSincronizacion>("cargando");
+
+  const cargado = useRef(false);
+  const guardarEnServidor = useRef(true);
+
+  // Al montar, trae el estado guardado en el servidor (compartido entre dispositivos).
+  useEffect(() => {
+    let cancelado = false;
+    fetch("/api/estado")
+      .then((r) => (r.ok ? r.json() : Promise.reject(new Error(`HTTP ${r.status}`))))
+      .then((data: Partial<EstadoSincronizado>) => {
+        if (cancelado) return;
+        if (data && (data.almacen || data.extras || data.activoId)) {
+          setAlmacen(data.almacen ?? {});
+          setExtras(data.extras ?? []);
+          setActivoId(data.activoId ?? activoIdInicial);
+        }
+        setSincronizacion("sincronizado");
+      })
+      .catch(() => {
+        if (cancelado) return;
+        // Sin servidor disponible (p. ej. en desarrollo local): sigue funcionando solo local.
+        guardarEnServidor.current = false;
+        setSincronizacion("local");
+      })
+      .finally(() => {
+        cargado.current = true;
+      });
+    return () => {
+      cancelado = true;
+    };
+  }, []);
+
+  // Guarda cada cambio: siempre en localStorage (instantáneo) y, si hay servidor, también ahí (con debounce).
+  useEffect(() => {
+    if (!cargado.current) return;
+    const estado: EstadoSincronizado = { almacen, extras, activoId };
+    guardarLocal(estado);
+    if (!guardarEnServidor.current) return;
+
+    const temporizador = setTimeout(() => {
+      fetch("/api/estado", {
+        method: "PUT",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(estado),
+      })
+        .then((r) => {
+          if (!r.ok) throw new Error(`HTTP ${r.status}`);
+          setSincronizacion("sincronizado");
+        })
+        .catch(() => setSincronizacion("error"));
+    }, 600);
+
+    return () => clearTimeout(temporizador);
+  }, [almacen, extras, activoId]);
 
   const documentos = useMemo(() => listarDocumentos(extras), [extras]);
 
@@ -35,54 +118,39 @@ export function useDocumentos() {
     [almacen],
   );
 
-  const guardar = useCallback(
-    (id: string, html: string, titulo?: string) => {
-      setAlmacen((prev) => ({
-        ...prev,
-        [id]: { html, titulo: titulo ?? prev[id]?.titulo, actualizado: Date.now() },
-      }));
-    },
-    [setAlmacen],
-  );
+  const guardar = useCallback((id: string, html: string, titulo?: string) => {
+    setAlmacen((prev) => ({
+      ...prev,
+      [id]: { html, titulo: titulo ?? prev[id]?.titulo, actualizado: Date.now() },
+    }));
+  }, []);
 
-  const renombrar = useCallback(
-    (id: string, titulo: string) => {
-      setAlmacen((prev) => {
-        const previo = prev[id];
-        if (!previo) return prev;
-        return { ...prev, [id]: { ...previo, titulo, actualizado: Date.now() } };
-      });
-    },
-    [setAlmacen],
-  );
+  const renombrar = useCallback((id: string, titulo: string) => {
+    setAlmacen((prev) => {
+      const previo = prev[id];
+      if (!previo) return prev;
+      return { ...prev, [id]: { ...previo, titulo, actualizado: Date.now() } };
+    });
+  }, []);
 
-  const restaurar = useCallback(
-    (id: string) => {
-      setAlmacen((prev) => {
-        const copia = { ...prev };
-        delete copia[id];
-        return copia;
-      });
-      setVersiones((v) => ({ ...v, [id]: (v[id] ?? 0) + 1 }));
-    },
-    [setAlmacen],
-  );
+  const restaurar = useCallback((id: string) => {
+    setAlmacen((prev) => {
+      const copia = { ...prev };
+      delete copia[id];
+      return copia;
+    });
+    setVersiones((v) => ({ ...v, [id]: (v[id] ?? 0) + 1 }));
+  }, []);
 
-  const abrirExtra = useCallback(
-    (temaId: string) => {
-      setExtras((prev) => (prev.includes(temaId) ? prev : [...prev, temaId]));
-      setActivoId(temaId);
-    },
-    [setExtras, setActivoId],
-  );
+  const abrirExtra = useCallback((temaId: string) => {
+    setExtras((prev) => (prev.includes(temaId) ? prev : [...prev, temaId]));
+    setActivoId(temaId);
+  }, []);
 
-  const cerrarExtra = useCallback(
-    (temaId: string) => {
-      setExtras((prev) => prev.filter((id) => id !== temaId));
-      setActivoId((actual) => (actual === temaId ? SELECCION.items[0].temaId : actual));
-    },
-    [setExtras, setActivoId],
-  );
+  const cerrarExtra = useCallback((temaId: string) => {
+    setExtras((prev) => prev.filter((id) => id !== temaId));
+    setActivoId((actual) => (actual === temaId ? activoIdInicial : actual));
+  }, []);
 
   const estaEditado = useCallback((id: string) => Boolean(almacen[id]), [almacen]);
   const ultimaEdicion = useCallback((id: string) => almacen[id]?.actualizado ?? null, [almacen]);
@@ -102,6 +170,7 @@ export function useDocumentos() {
     estaEditado,
     ultimaEdicion,
     versiones,
+    sincronizacion,
   };
 }
 

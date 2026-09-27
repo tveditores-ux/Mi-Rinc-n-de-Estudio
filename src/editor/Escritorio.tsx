@@ -457,6 +457,16 @@ export function Escritorio({ docs, onIrBiblioteca }: Props) {
           <p className="truncate px-2 font-sans text-[11px] text-tinta-500">
             {doc.referencias.join(" · ")} ·{" "}
             <span className={cn(estadoGuardado === "guardado" ? "text-oliva-700" : "text-oro-700")}>{etiquetaGuardado}</span>
+            {docs.sincronizacion === "local" && (
+              <span className="text-oro-700" title="No se pudo conectar con el servidor: los cambios solo se guardan en este dispositivo">
+                {" "}· Solo en este dispositivo
+              </span>
+            )}
+            {docs.sincronizacion === "error" && (
+              <span className="text-red-700" title="Fallo al sincronizar con el servidor, reintentando">
+                {" "}· Error de sincronización
+              </span>
+            )}
           </p>
         </div>
         <div className="hidden items-center gap-1 sm:flex">
