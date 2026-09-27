@@ -1,10 +1,11 @@
-import { useEffect, useRef, useState, type ReactNode } from "react";
+import { useEffect, useRef, useState, type ChangeEvent, type ReactNode } from "react";
 import { cn } from "../utils/cn";
 import {
   COLORES_RESALTADO,
   COLORES_TEXTO,
   FUENTES,
   TAMANOS,
+  prepararImagen,
   type Bloque,
   type EstadoFormato,
   type ModoCaso,
@@ -397,6 +398,24 @@ export function Cinta({
     FUENTES.find((f) => estado.fuente && f.css.toLowerCase().includes(estado.fuente.toLowerCase().split(",")[0]))?.css ??
     FUENTES[0].css;
 
+  const entradaImagenRef = useRef<HTMLInputElement>(null);
+  const [cargandoImagen, setCargandoImagen] = useState(false);
+
+  const elegirImagen = async (e: ChangeEvent<HTMLInputElement>) => {
+    const archivo = e.target.files?.[0];
+    e.target.value = "";
+    if (!archivo) return;
+    setCargandoImagen(true);
+    try {
+      const dataUrl = await prepararImagen(archivo);
+      acciones.insertarHtml(`<p><img src="${dataUrl}" alt="" /></p><p></p>`);
+    } catch {
+      window.alert("No se pudo insertar la imagen. Prueba con otro archivo.");
+    } finally {
+      setCargandoImagen(false);
+    }
+  };
+
   return (
     <div className="no-imprimir border-b border-pergamino-300 bg-pergamino-100/90 backdrop-blur">
       {/* Pestañas */}
@@ -626,6 +645,25 @@ export function Cinta({
               <Boton titulo="Insertar pausa de lectura (se lee como silencio breve)" ancho onClick={() => acciones.insertarHtml('<p class="nota"><em>— pausa —</em></p><p></p>')}>
                 <Icono nombre="reloj" />
                 <span>Pausa</span>
+              </Boton>
+            </Grupo>
+
+            <Grupo titulo="Imagen">
+              <input
+                ref={entradaImagenRef}
+                type="file"
+                accept="image/*"
+                className="hidden"
+                onChange={elegirImagen}
+              />
+              <Boton
+                titulo="Insertar una imagen desde tu dispositivo"
+                ancho
+                deshabilitado={cargandoImagen}
+                onClick={() => entradaImagenRef.current?.click()}
+              >
+                <Icono nombre="imagen" />
+                <span>{cargandoImagen ? "Cargando…" : "Imagen"}</span>
               </Boton>
             </Grupo>
 

@@ -105,6 +105,33 @@ export function insertarHtml(html: string) {
   ejecutar("insertHTML", html);
 }
 
+/** Redimensiona una imagen (máx. 1600px de lado) y la devuelve como data URL JPEG, para no inflar el documento. */
+export function prepararImagen(archivo: File): Promise<string> {
+  return new Promise((resolve, reject) => {
+    const lector = new FileReader();
+    lector.onerror = () => reject(new Error("No se pudo leer la imagen."));
+    lector.onload = () => {
+      const img = new Image();
+      img.onerror = () => reject(new Error("No se pudo procesar la imagen."));
+      img.onload = () => {
+        const max = 1600;
+        const escala = Math.min(1, max / Math.max(img.width, img.height));
+        const w = Math.round(img.width * escala);
+        const h = Math.round(img.height * escala);
+        const lienzo = document.createElement("canvas");
+        lienzo.width = w;
+        lienzo.height = h;
+        const ctx = lienzo.getContext("2d");
+        if (!ctx) return reject(new Error("No se pudo procesar la imagen."));
+        ctx.drawImage(img, 0, 0, w, h);
+        resolve(lienzo.toDataURL("image/jpeg", 0.85));
+      };
+      img.src = lector.result as string;
+    };
+    lector.readAsDataURL(archivo);
+  });
+}
+
 export function insertarTexto(texto: string) {
   ejecutar("insertText", texto);
 }
@@ -287,6 +314,7 @@ export const CSS_DOCUMENTO = `
   li { margin-bottom: 4pt; }
   hr { border: 0; border-top: 1px solid #dccba5; margin: 14pt 0; }
   .marcador { color: #8a7a6b; font-style: italic; }
+  img { max-width: 100%; height: auto; }
 `;
 
 export function envolverHtml(titulo: string, cuerpo: string, paraWord = false): string {

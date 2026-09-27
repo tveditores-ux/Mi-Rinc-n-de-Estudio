@@ -228,6 +228,13 @@ body {
 .documento blockquote.versiculo {
   font-size: 1.02em;
 }
+.documento img {
+  max-width: 100%;
+  height: auto;
+  border-radius: 6px;
+  display: block;
+  margin: 0.4rem 0;
+}
 .documento ul,
 .documento ol {
   margin: 0 0 0.8rem 1.4rem;
