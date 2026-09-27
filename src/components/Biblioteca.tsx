@@ -12,9 +12,10 @@ import { VistaImpresion } from "./VistaImpresion";
 
 interface Props {
   onAbrirEnEscritorio: (temaId: string) => void;
+  onAbrirReferencia: (referencia: string) => void;
 }
 
-export function Biblioteca({ onAbrirEnEscritorio }: Props) {
+export function Biblioteca({ onAbrirEnEscritorio, onAbrirReferencia }: Props) {
   const [filtro, setFiltro] = useState<Necesidad | null>(null);
   const [serie, setSerie] = useState<SerieId | null>(null);
   const [abiertoId, setAbiertoId] = useState<string | null>(null);
@@ -171,6 +172,10 @@ export function Biblioteca({ onAbrirEnEscritorio }: Props) {
         onAbrirEnEscritorio={(id) => {
           cerrar();
           onAbrirEnEscritorio(id);
+        }}
+        onAbrirReferencia={(ref) => {
+          cerrar();
+          onAbrirReferencia(ref);
         }}
         total={TEMAS.length}
       />

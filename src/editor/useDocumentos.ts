@@ -133,6 +133,20 @@ export function useDocumentos() {
     });
   }, []);
 
+  /** Anexa HTML al final de un documento (aunque no esté abierto en el editor). */
+  const anexarHtml = useCallback(
+    (id: string, html: string) => {
+      const doc = documentos.find((d) => d.id === id);
+      if (!doc) return;
+      setAlmacen((prev) => {
+        const base = prev[id]?.html ?? documentoInicial(doc);
+        return { ...prev, [id]: { html: `${base}\n${html}`, titulo: prev[id]?.titulo, actualizado: Date.now() } };
+      });
+      setVersiones((v) => ({ ...v, [id]: (v[id] ?? 0) + 1 }));
+    },
+    [documentos],
+  );
+
   const restaurar = useCallback((id: string) => {
     setAlmacen((prev) => {
       const copia = { ...prev };
@@ -164,6 +178,7 @@ export function useDocumentos() {
     obtenerTitulo,
     guardar,
     renombrar,
+    anexarHtml,
     restaurar,
     abrirExtra,
     cerrarExtra,

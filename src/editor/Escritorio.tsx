@@ -1,8 +1,11 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { PanelBiblia } from "../biblia/PanelBiblia";
+import { extraerReferenciasDeTexto } from "../biblia/referencias";
+import { useBiblia } from "../biblia/useBiblia";
 import { useLocalStorage } from "../hooks/useLocalStorage";
 import { cn } from "../utils/cn";
 import { BuscarReemplazar } from "./BuscarReemplazar";
-import { Cinta, type AccionesEditor, type Pestana } from "./Cinta";
+import { Cinta, type AccionesBiblia, type AccionesEditor, type Pestana } from "./Cinta";
 import {
   aplicarBloque,
   aplicarFuente,
@@ -76,8 +79,12 @@ function construirBloques(raiz: HTMLElement): Bloques {
   return { textos: lista.map((b) => b.texto), fragmentos, elementos: lista.map((b) => b.elemento) };
 }
 
+type Dock = "biblia" | "lector";
+
 export function Escritorio({ docs, onIrBiblioteca }: Props) {
   const voz = useVoz();
+  const biblia = useBiblia();
+  const [dock, setDock] = useLocalStorage<Dock>("escritorio-dock-v1", "biblia");
   const raizRef = useRef<HTMLDivElement>(null);
   const rangoRef = useRef<Range | null>(null);
   const temporizadorRef = useRef<number | null>(null);
@@ -128,9 +135,17 @@ export function Escritorio({ docs, onIrBiblioteca }: Props) {
     if (!raiz) return;
     raiz.focus({ preventScroll: true });
     const sel = window.getSelection();
-    if (sel && rangoRef.current) {
+    if (!sel) return;
+    if (rangoRef.current && raiz.contains(rangoRef.current.commonAncestorContainer)) {
       sel.removeAllRanges();
       sel.addRange(rangoRef.current);
+    } else {
+      // Sin cursor guardado: colocar el punto de inserción al final del documento.
+      const rango = document.createRange();
+      rango.selectNodeContents(raiz);
+      rango.collapse(false);
+      sel.removeAllRanges();
+      sel.addRange(rango);
     }
   }, []);
 
@@ -269,8 +284,9 @@ export function Escritorio({ docs, onIrBiblioteca }: Props) {
     const nuevos = construirBloques(raiz);
     setBloques(nuevos);
     voz.hablar(nuevos.fragmentos, 0);
+    setDock("lector");
     setPanelLector(true);
-  }, [voz, setPanelLector]);
+  }, [voz, setPanelLector, setDock]);
 
   const leerSeleccion = useCallback(() => {
     const texto = window.getSelection()?.toString().trim() ?? "";
@@ -294,8 +310,9 @@ export function Escritorio({ docs, onIrBiblioteca }: Props) {
     }
     const desde = Math.max(0, nuevos.fragmentos.findIndex((f) => f.bloque === indiceBloque));
     voz.hablar(nuevos.fragmentos, desde);
+    setDock("lector");
     setPanelLector(true);
-  }, [voz, setPanelLector]);
+  }, [voz, setPanelLector, setDock]);
 
   const imprimir = useCallback(() => {
     guardarAhora();
@@ -357,6 +374,81 @@ export function Escritorio({ docs, onIrBiblioteca }: Props) {
     [conSeleccion, guardarAhora, mostrarAviso, docs, voz, imprimir, titulo, leerTodo, leerSeleccion, leerDesdeCursor],
   );
 
+  /* ───────── Biblia ───────── */
+
+  const abrirDock = useCallback(
+    (cual: Dock) => {
+      setDock(cual);
+      setPanelLector(true);
+      if (window.innerWidth < 1280) setLectorMovil(true);
+    },
+    [setDock, setPanelLector],
+  );
+
+  const insertarVersiculos = useCallback(
+    (html: string) => {
+      conSeleccion(() => insertarHtml(html));
+    },
+    [conSeleccion],
+  );
+
+  const abrirReferenciaSeleccionada = useCallback(() => {
+    const texto = window.getSelection()?.toString().trim() || rangoRef.current?.toString().trim() || "";
+    const refs = texto ? extraerReferenciasDeTexto(texto) : [];
+    if (!refs.length) {
+      const err = texto ? biblia.irA(texto) : "Selecciona una referencia en el documento (p. ej. «Juan 3:16»).";
+      if (err) {
+        mostrarAviso(err);
+        return;
+      }
+    } else {
+      biblia.irAReferencia(refs[0]);
+      if (refs.length > 1) mostrarAviso(`Abriendo la primera de ${refs.length} referencias.`);
+    }
+    abrirDock("biblia");
+  }, [biblia, abrirDock, mostrarAviso]);
+
+  const escucharCapituloBiblia = useCallback(() => {
+    const fragmentos: Fragmento[] = [];
+    biblia.versiculos.forEach((v) => dividirEnFrases(v.texto).forEach((f) => fragmentos.push({ texto: f, bloque: v.verso })));
+    if (!fragmentos.length) return;
+    voz.hablar(fragmentos, 0);
+    abrirDock("biblia");
+  }, [biblia.versiculos, voz, abrirDock]);
+
+  const accionesBiblia: AccionesBiblia = useMemo(
+    () => ({
+      visible: panelLector && dock === "biblia",
+      alternar: () => {
+        if (panelLector && dock === "biblia") setPanelLector(false);
+        else abrirDock("biblia");
+      },
+      irA: (texto) => {
+        const err = biblia.irA(texto);
+        if (!err) abrirDock("biblia");
+        return err;
+      },
+      abrirReferenciaSeleccionada,
+      insertarSeleccion: () => {
+        if (!biblia.versiculosSeleccionados.length) return;
+        insertarVersiculos(biblia.htmlParaInsertar());
+        mostrarAviso(`${biblia.referenciaSeleccion} añadido al mensaje.`);
+      },
+      haySeleccion: biblia.seleccion.length > 0,
+      referenciaSeleccion: biblia.referenciaSeleccion,
+      referenciaCapitulo: biblia.referenciaCapitulo,
+      escucharCapitulo: escucharCapituloBiblia,
+      conNumeros: biblia.ajustes.conNumeros,
+      setConNumeros: (v) => biblia.actualizarAjustes({ conNumeros: v }),
+      comparar: biblia.ajustes.comparar,
+      setComparar: (v) => biblia.actualizarAjustes({ comparar: v }),
+      descargada: Boolean(biblia.descarga.meta),
+      descargando: biblia.descarga.enCurso,
+      descargar: () => void biblia.descargarNVI(),
+    }),
+    [panelLector, dock, setPanelLector, abrirDock, biblia, abrirReferenciaSeleccionada, insertarVersiculos, mostrarAviso, escucharCapituloBiblia],
+  );
+
   /* ───────── Atajos de teclado ───────── */
 
   useEffect(() => {
@@ -370,7 +462,10 @@ export function Escritorio({ docs, onIrBiblioteca }: Props) {
         return;
       }
       const k = e.key.toLowerCase();
-      if (k === "s") {
+      if (e.shiftKey && k === "b") {
+        e.preventDefault();
+        abrirReferenciaSeleccionada();
+      } else if (k === "s") {
         e.preventDefault();
         acciones.guardar();
       } else if (k === "f") {
@@ -390,7 +485,7 @@ export function Escritorio({ docs, onIrBiblioteca }: Props) {
     };
     window.addEventListener("keydown", manejar);
     return () => window.removeEventListener("keydown", manejar);
-  }, [acciones, imprimir, leerDesdeCursor, voz, modoEnfoque]);
+  }, [acciones, imprimir, leerDesdeCursor, voz, modoEnfoque, abrirReferenciaSeleccionada]);
 
   /* ───────── Título ───────── */
 
@@ -410,6 +505,54 @@ export function Escritorio({ docs, onIrBiblioteca }: Props) {
 
   const mostrarLista = panelLista && !modoEnfoque;
   const mostrarLector = panelLector && !modoEnfoque;
+
+  const cerrarDock = () => {
+    setPanelLector(false);
+    setLectorMovil(false);
+  };
+
+  const panelDerecho = (
+    <div className="flex h-full w-full flex-col">
+      <div className="flex shrink-0 items-center gap-1 border-b border-l border-pergamino-300 bg-pergamino-200/70 px-1.5 pt-1.5">
+        {(
+          [
+            { id: "biblia", etiqueta: "Biblia NVI", icono: "biblia" },
+            { id: "lector", etiqueta: "Lectura en voz", icono: "volumen" },
+          ] as { id: Dock; etiqueta: string; icono: string }[]
+        ).map((t) => (
+          <button
+            key={t.id}
+            type="button"
+            onClick={() => setDock(t.id)}
+            className={cn(
+              "flex items-center gap-1.5 rounded-t-md px-3 py-1.5 font-sans text-xs font-semibold transition",
+              dock === t.id
+                ? t.id === "lector"
+                  ? "bg-tinta-900 text-pergamino-50"
+                  : "bg-white text-vino-800"
+                : "text-tinta-700 hover:text-tinta-900",
+            )}
+          >
+            <Icono nombre={t.icono} tamano={13} />
+            {t.etiqueta}
+          </button>
+        ))}
+      </div>
+      <div className="min-h-0 flex-1">
+        {dock === "biblia" ? (
+          <PanelBiblia biblia={biblia} voz={voz} modo="panel" onInsertar={insertarVersiculos} onCerrar={cerrarDock} onAviso={mostrarAviso} />
+        ) : (
+          <PanelLector
+            voz={voz}
+            fragmentosDocumento={bloques.fragmentos}
+            bloquesTexto={bloques.textos}
+            onActualizar={recalcularBloques}
+            onCerrar={cerrarDock}
+          />
+        )}
+      </div>
+    </div>
+  );
 
   const etiquetaGuardado =
     estadoGuardado === "guardado"
@@ -496,7 +639,11 @@ export function Escritorio({ docs, onIrBiblioteca }: Props) {
           <Icono nombre={voz.estado === "hablando" ? "pausa" : "volumen"} tamano={14} />
           <span className="hidden sm:inline">{voz.estado === "hablando" ? "Pausar" : voz.estado === "pausado" ? "Reanudar" : "Escuchar"}</span>
         </button>
-        <button type="button" onClick={() => setLectorMovil(true)} className="rounded-md p-1.5 text-tinta-700 hover:bg-pergamino-100 xl:hidden" aria-label="Panel de lectura">
+        <button type="button" onClick={() => abrirDock("biblia")} className="hidden items-center gap-1.5 rounded-full border border-oro-500/60 bg-oro-100 px-3 py-1.5 font-sans text-xs font-semibold text-oro-700 transition hover:bg-oro-200 sm:flex" title="Abrir la Biblia NVI">
+          <Icono nombre="biblia" tamano={14} />
+          Biblia
+        </button>
+        <button type="button" onClick={() => setLectorMovil(true)} className="rounded-md p-1.5 text-tinta-700 hover:bg-pergamino-100 xl:hidden" aria-label="Panel lateral (Biblia y lectura)">
           <Icono nombre="panel" tamano={18} />
         </button>
       </div>
@@ -504,11 +651,13 @@ export function Escritorio({ docs, onIrBiblioteca }: Props) {
       <Cinta
         estado={estado}
         acciones={acciones}
+        biblia={accionesBiblia}
         voz={voz}
         zoom={zoom}
         setZoom={setZoom}
         panelLector={panelLector}
         setPanelLector={setPanelLector}
+        onMostrarLector={() => abrirDock("lector")}
         panelLista={panelLista}
         setPanelLista={setPanelLista}
         modoEnfoque={modoEnfoque}
@@ -540,14 +689,8 @@ export function Escritorio({ docs, onIrBiblioteca }: Props) {
         </div>
 
         {mostrarLector && (
-          <div className="no-imprimir hidden w-80 shrink-0 xl:flex 2xl:w-96">
-            <PanelLector
-              voz={voz}
-              fragmentosDocumento={bloques.fragmentos}
-              bloquesTexto={bloques.textos}
-              onActualizar={recalcularBloques}
-              onCerrar={() => setPanelLector(false)}
-            />
+          <div className={cn("no-imprimir hidden shrink-0 xl:flex", dock === "biblia" ? "w-[26rem] 2xl:w-[28rem]" : "w-80 2xl:w-96")}>
+            {panelDerecho}
           </div>
         )}
 
@@ -563,15 +706,7 @@ export function Escritorio({ docs, onIrBiblioteca }: Props) {
         {lectorMovil && (
           <div className="no-imprimir absolute inset-0 z-40 flex justify-end xl:hidden">
             <button type="button" className="flex-1 bg-tinta-950/40" aria-label="Cerrar" onClick={() => setLectorMovil(false)} />
-            <div className="flex w-96 max-w-[90vw] shadow-elevada">
-              <PanelLector
-                voz={voz}
-                fragmentosDocumento={bloques.fragmentos}
-                bloquesTexto={bloques.textos}
-                onActualizar={recalcularBloques}
-                onCerrar={() => setLectorMovil(false)}
-              />
-            </div>
+            <div className="flex w-[26rem] max-w-[92vw] shadow-elevada">{panelDerecho}</div>
           </div>
         )}
 
@@ -599,8 +734,13 @@ export function Escritorio({ docs, onIrBiblioteca }: Props) {
               ? `Voz: ${voz.vozActual.name}`
               : "Sin voz"}
         </span>
+        <span className="hidden whitespace-nowrap sm:inline">
+          <Icono nombre="biblia" tamano={12} className="mr-1 inline" />
+          {biblia.referenciaCapitulo}
+          {biblia.seleccion.length > 0 ? ` · ${biblia.referenciaSeleccion}` : ""}
+        </span>
         <span className="ml-auto hidden whitespace-nowrap text-pergamino-200/60 md:inline">
-          Ctrl+S guardar · Ctrl+F buscar · Ctrl+Mayús+L leer desde el cursor · Ctrl+Mayús+Espacio pausa
+          Ctrl+S guardar · Ctrl+F buscar · Ctrl+Mayús+B abrir referencia en la Biblia · Ctrl+Mayús+L leer desde el cursor
         </span>
         <div className="flex items-center gap-1 whitespace-nowrap">
           <button type="button" onClick={() => setZoom(Math.max(0.5, Math.round((zoom - 0.1) * 10) / 10))} className="rounded p-0.5 hover:bg-white/10" aria-label="Alejar">

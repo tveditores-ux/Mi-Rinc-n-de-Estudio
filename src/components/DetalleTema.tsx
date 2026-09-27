@@ -9,6 +9,7 @@ interface Props {
   onEscoger: (id: string) => void;
   onNavegar: (direccion: 1 | -1) => void;
   onAbrirEnEscritorio?: (id: string) => void;
+  onAbrirReferencia?: (referencia: string) => void;
   total: number;
 }
 
@@ -37,7 +38,7 @@ function Seccion({
   );
 }
 
-export function DetalleTema({ tema, escogidoId, onCerrar, onEscoger, onNavegar, onAbrirEnEscritorio, total }: Props) {
+export function DetalleTema({ tema, escogidoId, onCerrar, onEscoger, onNavegar, onAbrirEnEscritorio, onAbrirReferencia, total }: Props) {
   const [copiado, setCopiado] = useState(false);
 
   useEffect(() => {
@@ -156,7 +157,14 @@ export function DetalleTema({ tema, escogidoId, onCerrar, onEscoger, onNavegar, 
           {/* Texto base */}
           <figure className="textura-papel mt-8 rounded-2xl border border-oro-200 bg-oro-100/60 p-6 sm:p-7">
             <figcaption className="font-sans text-[11px] font-semibold uppercase tracking-[0.25em] text-oro-700">
-              Texto base · {tema.textoBase.referencia}
+              Texto base ·{" "}
+              {onAbrirReferencia ? (
+                <button type="button" onClick={() => onAbrirReferencia(tema.textoBase.referencia)} className="underline decoration-oro-500/60 underline-offset-2 hover:text-vino-700" title="Abrir en la Biblia NVI">
+                  {tema.textoBase.referencia}
+                </button>
+              ) : (
+                tema.textoBase.referencia
+              )}
               {tema.textoBase.version && (
                 <span className="ml-2 font-normal normal-case tracking-normal text-tinta-500">
                   ({tema.textoBase.version})
@@ -181,11 +189,19 @@ export function DetalleTema({ tema, escogidoId, onCerrar, onEscoger, onNavegar, 
           <Seccion etiqueta="Textos de apoyo">
             <ul className="flex flex-wrap gap-2">
               {tema.textosApoyo.map((r) => (
-                <li
-                  key={r}
-                  className="rounded-md border border-pergamino-300 bg-white px-2.5 py-1 font-sans text-sm font-medium text-tinta-800"
-                >
-                  {r}
+                <li key={r}>
+                  {onAbrirReferencia ? (
+                    <button
+                      type="button"
+                      onClick={() => onAbrirReferencia(r)}
+                      title="Abrir en la Biblia NVI"
+                      className="rounded-md border border-pergamino-300 bg-white px-2.5 py-1 font-sans text-sm font-medium text-tinta-800 transition hover:border-oro-600 hover:text-vino-800"
+                    >
+                      {r}
+                    </button>
+                  ) : (
+                    <span className="rounded-md border border-pergamino-300 bg-white px-2.5 py-1 font-sans text-sm font-medium text-tinta-800">{r}</span>
+                  )}
                 </li>
               ))}
             </ul>
@@ -211,7 +227,13 @@ export function DetalleTema({ tema, escogidoId, onCerrar, onEscoger, onNavegar, 
                   <div className="min-w-0 flex-1">
                     <p className="font-serif text-xl font-semibold leading-tight text-tinta-900">{p.titulo}</p>
                     <p className="mt-0.5 font-sans text-xs font-semibold uppercase tracking-[0.15em] text-vino-700">
-                      {p.referencia}
+                      {onAbrirReferencia ? (
+                        <button type="button" onClick={() => onAbrirReferencia(p.referencia)} className="text-left underline decoration-vino-700/40 underline-offset-2 hover:text-vino-900" title="Abrir en la Biblia NVI">
+                          {p.referencia}
+                        </button>
+                      ) : (
+                        p.referencia
+                      )}
                     </p>
                     <p className="mt-2 font-sans text-[15px] leading-relaxed text-tinta-800">{p.desarrollo}</p>
 
@@ -223,9 +245,13 @@ export function DetalleTema({ tema, escogidoId, onCerrar, onEscoger, onNavegar, 
                             className="textura-papel rounded-lg border-l-[3px] border-oro-600 bg-oro-100/50 px-4 py-3"
                           >
                             <div className="flex flex-wrap items-center gap-2">
-                              <span className="font-sans text-xs font-bold uppercase tracking-[0.15em] text-oro-700">
-                                {v.referencia}
-                              </span>
+                              {onAbrirReferencia ? (
+                                <button type="button" onClick={() => onAbrirReferencia(v.referencia)} className="font-sans text-xs font-bold uppercase tracking-[0.15em] text-oro-700 underline decoration-oro-500/50 underline-offset-2 hover:text-vino-800" title="Abrir en la Biblia NVI">
+                                  {v.referencia}
+                                </button>
+                              ) : (
+                                <span className="font-sans text-xs font-bold uppercase tracking-[0.15em] text-oro-700">{v.referencia}</span>
+                              )}
                               <span className="rounded bg-oro-600 px-1.5 py-0.5 font-sans text-[10px] font-bold uppercase tracking-[0.18em] text-white">
                                 {v.version ?? "NVI"}
                               </span>

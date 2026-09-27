@@ -12,7 +12,26 @@ import {
 import { Icono } from "./Iconos";
 import type { Voz } from "./useVoz";
 
-export type Pestana = "inicio" | "insertar" | "voz" | "vista";
+export type Pestana = "inicio" | "insertar" | "biblia" | "voz" | "vista";
+
+export interface AccionesBiblia {
+  visible: boolean;
+  alternar: () => void;
+  irA: (texto: string) => string | null;
+  abrirReferenciaSeleccionada: () => void;
+  insertarSeleccion: () => void;
+  haySeleccion: boolean;
+  referenciaSeleccion: string;
+  referenciaCapitulo: string;
+  escucharCapitulo: () => void;
+  conNumeros: boolean;
+  setConNumeros: (v: boolean) => void;
+  comparar: string | null;
+  setComparar: (v: string | null) => void;
+  descargada: boolean;
+  descargando: boolean;
+  descargar: () => void;
+}
 
 export interface AccionesEditor {
   ejecutar: (comando: string, valor?: string) => void;
@@ -39,11 +58,14 @@ export interface AccionesEditor {
 interface Props {
   estado: EstadoFormato;
   acciones: AccionesEditor;
+  biblia: AccionesBiblia;
   voz: Voz;
   zoom: number;
   setZoom: (z: number) => void;
   panelLector: boolean;
   setPanelLector: (v: boolean) => void;
+  /** Abre el panel derecho en la pestaña de lectura en voz. */
+  onMostrarLector: () => void;
   panelLista: boolean;
   setPanelLista: (v: boolean) => void;
   modoEnfoque: boolean;
@@ -251,14 +273,110 @@ function PaletaColores({
 
 /* ─────────────── Cinta ─────────────── */
 
+function GrupoBiblia({ biblia }: { biblia: AccionesBiblia }) {
+  const [texto, setTexto] = useState("");
+  const [error, setError] = useState<string | null>(null);
+  return (
+    <>
+      <Grupo titulo="Panel">
+        <Boton titulo="Mostrar u ocultar la Biblia" ancho activo={biblia.visible} onClick={biblia.alternar}>
+          <Icono nombre="biblia" />
+          <span>Biblia NVI</span>
+        </Boton>
+      </Grupo>
+      <Grupo titulo="Ir a">
+        <form
+          onSubmit={(e) => {
+            e.preventDefault();
+            const err = biblia.irA(texto);
+            setError(err);
+            if (!err) setTexto("");
+          }}
+          className="flex items-center gap-1"
+        >
+          <input
+            value={texto}
+            onChange={(e) => {
+              setTexto(e.target.value);
+              if (error) setError(null);
+            }}
+            placeholder="Juan 3:16"
+            title={error ?? "Escribe una referencia y pulsa Enter"}
+            className={cn(
+              "h-8 w-32 rounded-md border bg-white px-2 font-sans text-sm text-tinta-800 focus:outline-none",
+              error ? "border-vino-600" : "border-pergamino-300 focus:border-oro-600",
+            )}
+          />
+          <button type="submit" className="h-8 rounded-md border border-pergamino-300 px-2 font-sans text-sm text-tinta-800 hover:bg-white">
+            Ir
+          </button>
+        </form>
+        <Boton titulo="Abrir en la Biblia la referencia seleccionada en el documento (Ctrl+Mayús+B)" ancho onClick={biblia.abrirReferenciaSeleccionada}>
+          <Icono nombre="buscar" />
+          <span>Referencia seleccionada</span>
+        </Boton>
+      </Grupo>
+      <Grupo titulo="Versículos">
+        <Boton
+          titulo={biblia.haySeleccion ? `Insertar ${biblia.referenciaSeleccion} en el cursor` : "Selecciona versículos en el panel de la Biblia"}
+          ancho
+          deshabilitado={!biblia.haySeleccion}
+          onClick={biblia.insertarSeleccion}
+        >
+          <Icono nombre="cita" />
+          <span>{biblia.haySeleccion ? `Insertar ${biblia.referenciaSeleccion}` : "Insertar selección"}</span>
+        </Boton>
+        <Boton titulo={`Escuchar ${biblia.referenciaCapitulo}`} ancho onClick={biblia.escucharCapitulo}>
+          <Icono nombre="volumen" />
+          <span>Escuchar capítulo</span>
+        </Boton>
+        <label className="flex h-8 cursor-pointer items-center gap-1.5 px-1.5 font-sans text-xs text-tinta-700">
+          <input type="checkbox" checked={biblia.conNumeros} onChange={(e) => biblia.setConNumeros(e.target.checked)} className="accent-vino-700" />
+          Con números
+        </label>
+      </Grupo>
+      <Grupo titulo="Comparar">
+        <select
+          value={biblia.comparar ?? ""}
+          onChange={(e) => biblia.setComparar(e.target.value || null)}
+          className="h-8 w-44 rounded-md border border-pergamino-300 bg-white px-2 font-sans text-sm text-tinta-800"
+          title="Mostrar otra versión debajo de cada versículo"
+        >
+          <option value="">Solo NVI</option>
+          <option value="RV1960">NVI + Reina-Valera 1960</option>
+          <option value="NTV">NVI + NTV</option>
+          <option value="LBLA">NVI + LBLA</option>
+          <option value="PDT">NVI + Palabra de Dios para Todos</option>
+          <option value="BTX3">NVI + Biblia Textual</option>
+          <option value="RV2004">NVI + Reina Valera Gómez</option>
+        </select>
+      </Grupo>
+      <Grupo titulo="Sin conexión">
+        {biblia.descargada ? (
+          <span className="flex h-8 items-center gap-1.5 px-1.5 font-sans text-xs text-oliva-700">
+            <Icono nombre="check" tamano={14} /> NVI guardada en este equipo
+          </span>
+        ) : (
+          <Boton titulo="Descargar la NVI completa (unos 2 MB) para leer y buscar sin internet" ancho onClick={biblia.descargar} deshabilitado={biblia.descargando}>
+            <Icono nombre="descargar" />
+            <span>{biblia.descargando ? "Descargando…" : "Descargar NVI"}</span>
+          </Boton>
+        )}
+      </Grupo>
+    </>
+  );
+}
+
 export function Cinta({
   estado,
   acciones,
+  biblia,
   voz,
   zoom,
   setZoom,
   panelLector,
   setPanelLector,
+  onMostrarLector,
   panelLista,
   setPanelLista,
   modoEnfoque,
@@ -269,6 +387,7 @@ export function Cinta({
   const pestanas: { id: Pestana; etiqueta: string }[] = [
     { id: "inicio", etiqueta: "Inicio" },
     { id: "insertar", etiqueta: "Insertar" },
+    { id: "biblia", etiqueta: "Biblia" },
     { id: "voz", etiqueta: "Voz" },
     { id: "vista", etiqueta: "Vista" },
   ];
@@ -535,6 +654,8 @@ export function Cinta({
           </>
         )}
 
+        {pestana === "biblia" && <GrupoBiblia biblia={biblia} />}
+
         {pestana === "voz" && (
           <>
             <Grupo titulo="Reproducción">
@@ -635,7 +756,7 @@ export function Cinta({
             </Grupo>
 
             <Grupo titulo="Lector">
-              <Boton titulo="Mostrar u ocultar el panel de lectura (teleprompter)" ancho activo={panelLector} onClick={() => setPanelLector(!panelLector)}>
+              <Boton titulo="Mostrar u ocultar el panel de lectura (teleprompter)" ancho activo={panelLector} onClick={() => (panelLector ? setPanelLector(false) : onMostrarLector())}>
                 <Icono nombre="panel" />
                 <span>Panel de lectura</span>
               </Boton>
@@ -662,9 +783,9 @@ export function Cinta({
                 <Icono nombre="libro" />
                 <span>Mensajes</span>
               </Boton>
-              <Boton titulo="Panel de lectura" ancho activo={panelLector} onClick={() => setPanelLector(!panelLector)}>
+              <Boton titulo="Panel lateral (Biblia y lectura en voz)" ancho activo={panelLector} onClick={() => (panelLector ? setPanelLector(false) : onMostrarLector())}>
                 <Icono nombre="panel" />
-                <span>Lector</span>
+                <span>Panel lateral</span>
               </Boton>
               <Boton titulo="Modo enfoque: oculta los paneles y amplía la hoja" ancho activo={modoEnfoque} onClick={() => setModoEnfoque(!modoEnfoque)}>
                 <Icono nombre="ojo" />
