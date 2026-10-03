@@ -6,13 +6,15 @@ import { Icono } from "./editor/Iconos";
 import { useDocumentos } from "./editor/useDocumentos";
 import { useLocalStorage } from "./hooks/useLocalStorage";
 import { cn } from "./utils/cn";
+import { PaginaEstudio } from "./estudio/PaginaEstudio";
 
-type Vista = "escritorio" | "biblia" | "biblioteca";
+type Vista = "escritorio" | "biblia" | "biblioteca" | "estudio";
 
 const VISTAS: { id: Vista; etiqueta: string; icono: string }[] = [
   { id: "escritorio", etiqueta: "Escritorio", icono: "archivo" },
   { id: "biblia", etiqueta: "Biblia NVI", icono: "biblia" },
   { id: "biblioteca", etiqueta: "Biblioteca", icono: "libro" },
+  { id: "estudio", etiqueta: "Estudio", icono: "libro" },
 ];
 
 export default function App() {
@@ -51,7 +53,9 @@ export default function App() {
       ? "Redacta, edita y escucha tus mensajes con las voces de tu equipo"
       : vista === "biblia"
         ? "Nueva Versión Internacional · lectura, búsqueda y marcadores"
-        : "42 temas · cuatro series · con versículos en NVI";
+        : vista === "biblioteca"
+          ? "42 temas · cuatro series · con versículos en NVI"
+          : "Recursos de estudio y reflexión";
 
   return (
     <>
@@ -89,6 +93,7 @@ export default function App() {
         />
       )}
       {vista === "biblioteca" && <Biblioteca onAbrirEnEscritorio={abrirEnEscritorio} onAbrirReferencia={abrirReferencia} />}
+      {vista === "estudio" && <PaginaEstudio />}
     </>
   );
 }
