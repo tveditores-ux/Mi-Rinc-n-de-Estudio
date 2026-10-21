@@ -1,4 +1,5 @@
-import { SELECCION } from "../data/seleccion";
+import { useEffect, useState } from "react";
+import { SELECCIONES } from "../data/seleccion";
 import { TEMAS } from "../data/temas";
 import { cn } from "../utils/cn";
 import { Icono } from "./Iconos";
@@ -21,16 +22,52 @@ function formatoHora(ms: number | null) {
 }
 
 export function ListaDocumentos({ docs, onIrBiblioteca, onCerrarPanel }: Props) {
-  const seleccion = docs.documentos.filter((d) => d.grupo === "seleccion");
+  const [escritorioId, setEscritorioId] = useState<string>(
+    () => docs.activo?.seleccionId ?? SELECCIONES[0].id,
+  );
+  const activoSeleccionId = docs.activo?.seleccionId ?? null;
+
+  // Si se abre un mensaje de otro escritorio (p. ej. desde la biblioteca), la lista lo sigue.
+  useEffect(() => {
+    if (activoSeleccionId) setEscritorioId(activoSeleccionId);
+  }, [activoSeleccionId]);
+
+  const escritorio = SELECCIONES.find((s) => s.id === escritorioId) ?? SELECCIONES[0];
+  const seleccion = docs.documentos.filter((d) => d.grupo === "seleccion" && d.seleccionId === escritorio.id);
   const extras = docs.documentos.filter((d) => d.grupo === "extra");
+
+  const cambiarEscritorio = (id: string) => {
+    setEscritorioId(id);
+    const primero = docs.documentos.find((d) => d.seleccionId === id);
+    if (primero && docs.activo?.seleccionId !== id) docs.setActivoId(primero.id);
+  };
 
   return (
     <aside className="flex h-full w-full flex-col border-r border-pergamino-300 bg-pergamino-50">
       <div className="border-b border-pergamino-200 px-4 py-3">
+        {SELECCIONES.length > 1 && (
+          <div className="mb-3 flex gap-1 rounded-full bg-pergamino-200/70 p-0.5" role="tablist" aria-label="Escritorios">
+            {SELECCIONES.map((s, i) => (
+              <button
+                key={s.id}
+                type="button"
+                role="tab"
+                aria-selected={s.id === escritorio.id}
+                onClick={() => cambiarEscritorio(s.id)}
+                className={cn(
+                  "flex-1 rounded-full px-2 py-1 font-sans text-xs font-semibold transition",
+                  s.id === escritorio.id ? "bg-tinta-900 text-pergamino-50 shadow-suave" : "text-tinta-700 hover:text-tinta-900",
+                )}
+              >
+                Escritorio {i + 1}
+              </button>
+            ))}
+          </div>
+        )}
         <div className="flex items-start justify-between gap-2">
           <div>
             <p className="font-sans text-[10px] font-semibold uppercase tracking-[0.22em] text-oro-700">Serie</p>
-            <h2 className="font-serif text-xl font-semibold leading-tight text-tinta-900">{SELECCION.nombre}</h2>
+            <h2 className="font-serif text-xl font-semibold leading-tight text-tinta-900">{escritorio.nombre}</h2>
             <p className="mt-1 font-sans text-xs text-tinta-500">{seleccion.length} mensajes · en orden de predicación</p>
           </div>
           {onCerrarPanel && (

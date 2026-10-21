@@ -79,6 +79,24 @@ export const SELECCION: Seleccion = {
   ],
 };
 
+/** Segundo escritorio: las parábolas de Jesús. */
+export const SELECCION_PARABOLAS: Seleccion = {
+  id: "parabolas-de-jesus",
+  nombre: "Las parábolas de Jesús",
+  descripcion: "Mensajes sobre las parábolas de Jesús, leídas desde el nuevo pacto.",
+  items: [
+    {
+      orden: 1,
+      temaId: "las-diez-virgenes",
+      titulo: "Las diez vírgenes",
+      referencias: ["Mateo 25:1-13"],
+    },
+  ],
+};
+
+/** Todos los escritorios (series) disponibles, en el orden en que aparecen en la lista. */
+export const SELECCIONES: Seleccion[] = [SELECCION, SELECCION_PARABOLAS];
+
 /** Texto NVI de las referencias escogidas por el predicador para encabezar cada mensaje. */
 export const REFERENCIAS_NVI: Record<string, string> = {
   "Romanos 8:16": "El Espíritu mismo asegura a nuestro espíritu que somos hijos de Dios.",

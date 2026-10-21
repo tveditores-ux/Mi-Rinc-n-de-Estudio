@@ -1,3 +1,4 @@
+import { TEMAS_PARABOLAS_JESUS } from "./temasParabolasJesus";
 import { TEXTO_BASE_NVI, VERSICULOS_NVI } from "./versiculosNVI";
 
 export type Necesidad =
@@ -29,6 +30,20 @@ export interface PuntoBosquejo {
   desarrollo: string;
   /** Texto completo (NVI) de los pasajes clave de este punto. */
   versiculos?: Cita[];
+  /**
+   * Partes etiquetadas que siguen al texto (Explicación, Cristo, Asumir, Aplicación, Frase clave…).
+   * Si existe, `desarrollo` se muestra como «Verdad central».
+   */
+  estructura?: { etiqueta: string; texto: string }[];
+  /**
+   * Cuerpo del punto como secuencia ordenada de párrafos y versículos, tal como lo escribió el predicador.
+   * Si existe, reemplaza a `desarrollo`, `versiculos` y `estructura`.
+   */
+  bloques?: (
+    | { tipo: "texto"; texto: string }
+    | { tipo: "versiculo"; referencia: string; texto: string; version?: string }
+    | { tipo: "lista"; items: { texto: string; sub?: string[] }[] }
+  )[];
 }
 
 export interface Serie {
@@ -83,10 +98,26 @@ export interface Tema {
   textosApoyo: string[];
   ideaCentral: string;
   porQueNoConvencional: string;
+  /** Contexto literario, histórico y cultural del pasaje (un párrafo por elemento). */
+  contexto?: string[];
+  /** «Buena noticia»: va siempre al inicio del documento, antes del título de la serie y del tema. */
+  buenaNoticia?: string[];
+  /** Título propio para el bloque de puntos (p. ej. «7 verdades reveladoras de esta parábola»). */
+  tituloBosquejo?: string;
+  /** Introducción ya redactada para el mensaje. */
+  introduccion?: string[];
+  /** Lectura del pasaje desde el nuevo pacto (Jeremías 31, Ezequiel 36, Hebreos 8–10…). */
+  luzNuevoPacto?: string[];
   bosquejo: PuntoBosquejo[];
   aplicacion: string[];
   cuidadoPastoral: string;
   ilustracion: string;
+  /** Conclusión y llamado ya redactados. */
+  conclusion?: string[];
+  /** Preguntas para conversar en grupo pequeño. */
+  preguntasGrupo?: string[];
+  /** Títulos propios para las secciones, cuando el predicador usa otros nombres. */
+  titulos?: { introduccion?: string; preguntas?: string; conclusion?: string };
 }
 
 export const NECESIDADES: { id: Necesidad; etiqueta: string; descripcion: string }[] = [
@@ -2465,6 +2496,7 @@ const TEMAS_BASE: Tema[] = [
     ilustracion:
       "Se cuenta de un hombre que buscaba dirección abriendo la Biblia al azar. La primera vez cayó en «Judas fue y se ahorcó». Inquieto, probó de nuevo: «Ve y haz tú lo mismo». Desesperado, lo intentó una tercera vez: «Lo que vas a hacer, hazlo pronto». La anécdota hace reír, pero describe con exactitud lo que ocurre cuando tratamos a la Palabra como un oráculo: obtenemos frases sin historia, y las frases sin historia pueden mandarnos a cualquier parte.",
   },
+  ...TEMAS_PARABOLAS_JESUS,
 ];
 
 /**
